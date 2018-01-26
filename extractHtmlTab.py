@@ -11,41 +11,47 @@ file="RELEVE DE PROPRIETE SC CHATEAU PATACHE D AUX ST CHRISTOLY.html"
 
 os.chdir(path)
 
-def get_soup(path,file):
-    '''ouvre le fichier et tranforme sous forme d'un DOM bs'''
+def get_soup(file):
+    '''Open the html file and transform it into a processible DOM bs'''
+
     html=open(file,"r").read()
     soup=BeautifulSoup(html, 'html.parser')
     return soup
 
-soup=get_soup(path,file)
 
-def get_prop(soup):
-    '''parse le DOM pour extraire les données pertinente des tableau'''
-    for table in  soup.find_all('table'):
-        typeProp=''
-        col=[]
-        dict_col={}
-        for row in table.find_all('tr'):
-            if len(row.find_all('td'))==1 :#detect the title rows (=the one cell rows)
-                typeProp=row.get_text()
-                print(typeProp)
-            elif typeProp=='PROPRIETES NON BATIES':#select only in "propriétes non baties" tables
-                if len(row.find_all('td'))>len(col):#we'll considere that sub-title rows are always shorter (less cells) than real data rows
-                    col=[c.text for c in row.find_all('td')]
-                    print(col)
-                else:
-                    i=0
-                    print(row.prettify())
-                    print(' - '*10)
-                    for c in row.find_all('td'):
-                        if c.text!='\xa0':
-                            dict_col[col[i]]=c.text
-                        i+=1
-                    if 'N°PLAN' in dict_col.keys():
-                        print(dict_col)
+def get_propTables(soup, typeProp):
+    '''extract tables on the criteria: the first cell text match the typeProp string'''
+    #We could have selected the table based on there span
     
-            #print(row.get_text())
-                        print(' - '*33)
-        print('-'*100)
+    tablesList=[]
+    for table in soup.find_all('table'):
+        if table.td.string == typeProp: #attention aux comparaison trop strictes
+            tablesList.append(table)
+    print ('numTables',len(tablesList))
+    
+    return tablesList
 
-get_prop(soup)
+def get_Data(tablesList):
+    '''extract all the colum data as a dictionaries list'''
+    
+    data=[]
+    for table in tablesList:
+        numCols=int(table.attrs['cols'])
+        for row in table.find_all('tr'):
+            if len(row)>=numCols:
+                cel=[c.string for c in row.find_all('td')]
+                if row.td.attrs['class']==['TitreC']:
+                    col=cel
+                else:
+                    dic={}
+                    for i in range(numCols):
+                        dic[col[i]]=cel[i]
+                    data.append(dic)
+    print([(dic["N°PLAN"],	dic["SECTION"],dic["N°PARC PRIM"],dic["CONTENANCE HA  A  CA"]) for dic in data if dic["N°PLAN"]!='\xa0'])	
+    print(len([(dic["N°PLAN"],	dic["SECTION"],dic["N°PARC PRIM"],dic["CONTENANCE HA  A  CA"]) for dic in data if dic["N°PLAN"]!='\xa0']))	
+
+#possibilité de vérifier la somme des surfaces
+
+soup=get_soup(file)
+tablesList=get_propTables(soup,'PROPRIETES NON BATIES')
+get_Data(tablesList)
