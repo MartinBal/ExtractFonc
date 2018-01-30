@@ -6,16 +6,17 @@ Manipulation des données foncière issues de tables html normalisées
 from bs4 import BeautifulSoup
 import os
 
-path='C:\\Users\\Martin Ballot\\Dropbox (PERMAGRO)\\6.PROJETS\\6.1.Plateforme\\Brainstorming\\Script\\ExtractionDonneesFoncieresHTML\\data'
-file="RELEVE DE PROPRIETE SC CHATEAU PATACHE D AUX ST CHRISTOLY.html"
+path='C:\\Users\\Martin Ballot\\Dropbox (PERMAGRO)\\2.CLIENTS\\ADV\\3_TRAVAIL\\CADASTRE\\BAUX_PROPRIETE'
+file="PAT_RDP_SC_PATACHE_BEGADAN_III.html"
 
 os.chdir(path)
 
 def get_soup(file):
     '''Open the html file and transform it into a processible DOM bs'''
-
-    html=open(file,"r").read()
+    f=open(file,"r")
+    html=f.read()
     soup=BeautifulSoup(html, 'html.parser')
+    f.close()
     return soup
 
 
@@ -47,11 +48,54 @@ def get_Data(tablesList):
                     for i in range(numCols):
                         dic[col[i]]=cel[i]
                     data.append(dic)
-    print([(dic["N°PLAN"],	dic["SECTION"],dic["N°PARC PRIM"],dic["CONTENANCE HA  A  CA"]) for dic in data if dic["N°PLAN"]!='\xa0'])	
-    print(len([(dic["N°PLAN"],	dic["SECTION"],dic["N°PARC PRIM"],dic["CONTENANCE HA  A  CA"]) for dic in data if dic["N°PLAN"]!='\xa0']))	
-
+    #print([(dic["N°PLAN"],	dic["SECTION"],dic["N°PARC PRIM"],dic["CONTENANCE HA  A  CA"]) for dic in data if dic["N°PLAN"]!='\xa0'])	
+    #print(len([(dic["N°PLAN"],	dic["SECTION"],dic["N°PARC PRIM"],dic["CONTENANCE HA  A  CA"]) for dic in data if dic["N°PLAN"]!='\xa0']))	
+    return data
 #possibilité de vérifier la somme des surfaces
+
+
 
 soup=get_soup(file)
 tablesList=get_propTables(soup,'PROPRIETES NON BATIES')
-get_Data(tablesList)
+data=get_Data(tablesList)
+
+
+nextCOM= False 
+nextDEP=False
+for cell in soup.find('table').find_all('td'):
+    if nextCOM : 
+        com = cell.string
+        nextCOM=False
+    elif nextDEP: 
+        dep = cell.string
+        nextDEP=False
+    if cell.string=='COM' : 
+        nextCOM=True
+    elif  cell.string=='DEP DIR':
+        nextDEP=True
+print(dep,com)
+
+
+headers=[]
+for d in data:
+    for k in d.keys():
+        if k not in headers : headers.append(k)
+print (headers)
+
+f = open('PERM_'+file[:-5]+'.csv', 'w')
+f.write('id;'+';'.join(headers)+';MFV_lien\n')
+for d in data:
+    values=[]
+    if 'N°PLAN'in d.keys() and 'SECTION'in d.keys() and d['N°PLAN']!='\xa0' and d['SECTION']!='\xa0':
+        ID = dep[:2]+com[:3]+'000'+'{:0>2}'.format(d["SECTION"])+'{:0>4}'.format(d["N°PLAN"])
+        values.append(ID)
+        for h in headers:
+            if h in d.keys():
+                values.append(d[h])
+            else: values.append('')
+        print(d)
+        print(values) 
+        line= ';'.join(values)+';'+file+'\n'
+        print (line)
+        f.write(line)
+f.close()
